@@ -1,0 +1,12 @@
+[Unit]
+Description=SSH HoneyService
+Documentation=https://github.com/cbelk/honeyshell
+After=network.target
+
+[Service]
+Environment="HONEY_KEY=/home/ubuntu/.honey/keys/honey_key"
+Restart=on-failure
+ExecStart=/home/ubuntu/.honey/sshoney
+
+[Install]
+WantedBy=multi-user.target
