@@ -1,29 +1,51 @@
 package main
 
 import (
+    "bufio"
     "encoding/base64"
+    "fmt"
     "io/ioutil"
     "log"
     "log/syslog"
-    "net"
+//    "net"
     "os"
+    "strings"
 
     "golang.org/x/crypto/ssh"
-)
-
-const (
-    port string = "22"
 )
 
 var (
     hostPrivateKeySigner    ssh.Signer
     keyFile                 string
     port                    string
-    keyPath                 string
+    ilevel                  string
 )
 
+func readConfig(config string) {
+    conf, err := os.Open(config)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer conf.Close()
+    reader := bufio.NewReader(conf)
+    scanner := bufio.NewScanner(reader)
+    for scanner.Scan() {
+        line := scanner.Text()
+        if line != "" && string(line[0]) != "#" {
+            str := strings.Split(line, "=")
+            if str[0] == "PORT" {
+                port = str[1]
+            } else if str[0] == "HONEY_KEY" {
+                keyFile = str[1]
+            } else if str[0] == "ILEVEL" {
+                ilevel = str[1]
+            }
+        }
+    }
+}
+
 func init() {
-    logwriter, err := syslog.New(syslog.LOG_NOTICE, "sshoney")
+    logwriter, err := syslog.New(syslog.LOG_NOTICE, "honeyshell")
     if err == nil {
         log.SetOutput(logwriter)
     }
@@ -33,14 +55,15 @@ func init() {
     } else {
         log.Fatal("HONEY_CONFIG must be set")
     }
-    keyPath := ""
-    if os.Getenv("HONEY_KEY") != "" {
-        keyPath = os.Getenv("HONEY_KEY")
+    readConfig(config)
+    fmt.Printf("port = %s\n", port)
+    fmt.Printf("key = %s\n", keyFile)
+    fmt.Printf("ilevel = %s\n", ilevel)
+    if keyFile == "" {
+        //log.Fatal("HONEY_KEY must be set")
+        fmt.Println("HONEY_KEY must be set")
     }
-    if keyPath == "" {
-        log.Fatal("HONEY_KEY must be set")
-    }
-    hostPrivateKey, err := ioutil.ReadFile(keyPath)
+    hostPrivateKey, err := ioutil.ReadFile(keyFile)
     if err != nil {
         log.Fatal(err)
     }
@@ -51,6 +74,7 @@ func init() {
 }
 
 func main() {
+    /*
     config := ssh.ServerConfig {
         PublicKeyCallback: keyAuth,
         PasswordCallback: passAuth,
@@ -75,6 +99,7 @@ func main() {
             sshConn.Close()
         }
     }
+    */
 }
 
 func keyAuth(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
