@@ -1,113 +1,58 @@
 package main
 
 import (
-    "bufio"
-    "encoding/base64"
+//    "bufio"
+    "bytes"
     "fmt"
     "io/ioutil"
     "log"
     "log/syslog"
 //    "net"
     "os"
-    "strings"
+//    "strings"
 
+    "github.com/cbelk/honeyshell/honey"
+    "github.com/cbelk/honeyshell/config"
     "golang.org/x/crypto/ssh"
 )
 
 var (
     hostPrivateKeySigner    ssh.Signer
-    keyFile                 string
-    port                    string
-    ilevel                  string
+    buf                     bytes.Buffer
 )
 
-func readConfig(config string) {
-    conf, err := os.Open(config)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer conf.Close()
-    reader := bufio.NewReader(conf)
-    scanner := bufio.NewScanner(reader)
-    for scanner.Scan() {
-        line := scanner.Text()
-        if line != "" && string(line[0]) != "#" {
-            str := strings.Split(line, "=")
-            if str[0] == "PORT" {
-                port = str[1]
-            } else if str[0] == "HONEY_KEY" {
-                keyFile = str[1]
-            } else if str[0] == "ILEVEL" {
-                ilevel = str[1]
-            }
-        }
-    }
-}
-
 func init() {
-    logwriter, err := syslog.New(syslog.LOG_NOTICE, "honeyshell")
-    if err == nil {
-        log.SetOutput(logwriter)
-    }
-    config := ""
+    conf := ""
     if os.Getenv("HONEY_CONFIG") != "" {
-        config = os.Getenv("HONEY_CONFIG")
+        conf = os.Getenv("HONEY_CONFIG")
     } else {
         log.Fatal("HONEY_CONFIG must be set")
     }
-    readConfig(config)
-    fmt.Printf("port = %s\n", port)
-    fmt.Printf("key = %s\n", keyFile)
-    fmt.Printf("ilevel = %s\n", ilevel)
-    if keyFile == "" {
-        //log.Fatal("HONEY_KEY must be set")
+    config.ReadConfig(conf)
+    logger := log.New(&buf, config.LoggerName, log.Lshortfile)
+    logwriter, err := syslog.New(syslog.LOG_NOTICE, config.LoggerName)
+    if err == nil {
+        logger.SetOutput(logwriter)
+    }
+    fmt.Printf("port = %s\n", config.Port)
+    fmt.Printf("key = %s\n", config.KeyFile)
+    fmt.Printf("ilevel = %s\n", config.Ilevel)
+    if config.KeyFile == "" {
+        //logger.Fatal("HONEY_KEY must be set")
         fmt.Println("HONEY_KEY must be set")
     }
-    hostPrivateKey, err := ioutil.ReadFile(keyFile)
+    hostPrivateKey, err := ioutil.ReadFile(config.KeyFile)
     if err != nil {
-        log.Fatal(err)
+        logger.Fatal(err)
     }
     hostPrivateKeySigner, err = ssh.ParsePrivateKey(hostPrivateKey)
     if err != nil {
-        log.Fatal(err)
+        logger.Fatal(err)
     }
 }
 
 func main() {
-    /*
-    config := ssh.ServerConfig {
-        PublicKeyCallback: keyAuth,
-        PasswordCallback: passAuth,
-        ServerVersion: "SSH-2.0-OpenSSH_7.2p2 Ubuntu 4ubuntu2.1",
+    if config.Ilevel == "LOW" {
+        honey.HoneyLow()
     }
-    config.Config.SetDefaults()
-    config.AddHostKey(hostPrivateKeySigner)
-    socket, err := net.Listen("tcp", ":"+port)
-    if err != nil {
-        log.Fatal(err)
-    }
-    for {
-        conn, err := socket.Accept()
-        if err != nil {
-            log.Fatal(err)
-        }
-        sshConn, _, _, err := ssh.NewServerConn(conn, &config)
-        if err != nil {
-            log.Printf("Connection to sshoney from %v .. error: %v --END\n", conn.RemoteAddr().String(), err)
-        } else {
-            log.Printf("Connection on sshoney from %v --END\n", sshConn.RemoteAddr())
-            sshConn.Close()
-        }
-    }
-    */
-}
-
-func keyAuth(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
-    log.Printf("%v attempted to connect as user %v with the key %v --END\n", conn.RemoteAddr(), conn.User(), base64.StdEncoding.EncodeToString(key.Marshal()))
-    return nil, nil
-}
-
-func passAuth(conn ssh.ConnMetadata, psswd []byte) (*ssh.Permissions, error) {
-    log.Printf("%v attempted to connect as user %v with the password %v --END\n", conn.RemoteAddr(), conn.User(), psswd)
-    return nil, nil
 }
