@@ -2,36 +2,37 @@ package honey
 
 import (
     "fmt"
+    "log"
+    "net"
 
     "github.com/cbelk/honeyshell/config"
+    "golang.org/x/crypto/ssh"
 )
 
-func HoneyLow() {
-/*
-    config := ssh.ServerConfig {
+func HoneyLow(logger *log.Logger, hostPrivateKeySigner ssh.Signer) {
+    conf := ssh.ServerConfig {
         PublicKeyCallback: KeyAuthLow,
         PasswordCallback: PassAuthLow,
-        ServerVersion: SerVer,
+        ServerVersion: config.SerVer,
     }
-    config.Config.SetDefaults()
-    config.AddHostKey(hostPrivateKeySigner)
-    socket, err := net.Listen("tcp", ":"+honeyshell.Port)
+    conf.Config.SetDefaults()
+    conf.AddHostKey(hostPrivateKeySigner)
+    socket, err := net.Listen("tcp", ":"+config.Port)
     if err != nil {
-        log.Fatal(err)
+        logger.Fatal(err)
     }
+    fmt.Printf("Server Version -- %v\n", config.SerVer)
     for {
         conn, err := socket.Accept()
         if err != nil {
-            log.Fatal(err)
+            logger.Fatal(err)
         }
-        sshConn, _, _, err := ssh.NewServerConn(conn, &config)
+        sshConn, _, _, err := ssh.NewServerConn(conn, &conf)
         if err != nil {
-            log.Printf("Connection to sshoney from %v .. error: %v --END\n", conn.RemoteAddr().String(), err)
+            logger.Printf("Connection to sshoney from %v .. error: %v --END\n", conn.RemoteAddr().String(), err)
         } else {
-            log.Printf("Connection on sshoney from %v --END\n", sshConn.RemoteAddr())
+            logger.Printf("Connection on sshoney from %v --END\n", sshConn.RemoteAddr())
             sshConn.Close()
         }
     }
-*/
-    fmt.Printf("Server Version -- %v\n", config.SerVer)
 }

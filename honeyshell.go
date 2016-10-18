@@ -19,6 +19,7 @@ import (
 var (
     hostPrivateKeySigner    ssh.Signer
     buf                     bytes.Buffer
+    logger                  *log.Logger
 )
 
 func init() {
@@ -29,14 +30,11 @@ func init() {
         log.Fatal("HONEY_CONFIG must be set")
     }
     config.ReadConfig(conf)
-    logger := log.New(&buf, config.LoggerName, log.Lshortfile)
+    logger = log.New(&buf, config.LoggerName, log.Lshortfile)
     logwriter, err := syslog.New(syslog.LOG_NOTICE, config.LoggerName)
     if err == nil {
         logger.SetOutput(logwriter)
     }
-    fmt.Printf("port = %s\n", config.Port)
-    fmt.Printf("key = %s\n", config.KeyFile)
-    fmt.Printf("ilevel = %s\n", config.Ilevel)
     if config.KeyFile == "" {
         //logger.Fatal("HONEY_KEY must be set")
         fmt.Println("HONEY_KEY must be set")
@@ -53,6 +51,6 @@ func init() {
 
 func main() {
     if config.Ilevel == "LOW" {
-        honey.HoneyLow()
+        honey.HoneyLow(logger, hostPrivateKeySigner)
     }
 }
